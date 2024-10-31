@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { authMiddleware } from "../middleware";
 
@@ -22,20 +23,31 @@ router.get("/presignedUrl", authMiddleware, async (req, res) => {
     //@ts-ignore
   const userId=req.userId
   
-  const command = new PutObjectCommand({
-    Bucket: "decentralized-5r",
+
+
+
+  const { url, fields } = await createPresignedPost(s3Client, {
+    Bucket: 'decentralized-5r',
     Key: `/fiver/${userId}/${Math.random()}/image.jpg`,
-    ContentType:"img/jpg"
-  });
-
-  const preSignedUrl = await getSignedUrl(s3Client, command, {
-    expiresIn: 3600,
-  });
-
-  console.log(preSignedUrl);
-  res.json({
-    preSignedUrl
+    Conditions: [
+      ['content-length-range', 0, 5 * 1024 * 1024] // 5 MB max
+    ],
+    Fields: {
+      success_action_status: '201',
+      'Content-Type': 'image/png'
+    },
+    Expires: 3600
   })
+  
+  console.log({ url, fields })
+
+  
+  res.json({
+    preSignedUrl:url,
+    fields
+  })
+
+
 });
 
 router.post("/signin", async (req, res) => {
