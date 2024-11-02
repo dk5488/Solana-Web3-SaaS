@@ -25,7 +25,6 @@ router.get("/presignedUrl", authMiddleware, async (req, res) => {
   
 
 
-
   const { url, fields } = await createPresignedPost(s3Client, {
     Bucket: 'decentralized-5r',
     Key: `/fiver/${userId}/${Math.random()}/image.jpg`,
