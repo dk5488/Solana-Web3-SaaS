@@ -9,7 +9,7 @@ app.use('/api/v1/worker',workerRoutes);
 
 
 app.get('/',(req,res)=>{
-    res.json("Server is up")
+    res.json("Server is up on port 3000")
 })
 
 app.listen(3000,()=>{
