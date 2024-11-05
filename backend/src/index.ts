@@ -1,6 +1,8 @@
 import express from "express"
 const app=express();
 
+const PORT=3000;
+
 import userRoutes from './routers/userRoutes'
 import workerRoutes from './routers/workerRoutes'
 
