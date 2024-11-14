@@ -5,6 +5,7 @@ import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { authMiddleware } from "../middleware";
+import { createTaskInput } from "../types";
 
 const router = Router();
 const prismaClient = new PrismaClient();
@@ -18,83 +19,8 @@ const s3Client = new S3Client({
   region: "eu-north-1",
 });
 
-//@ts-ignore
-router.post("/task", authMiddleware, async (req, res) => {
-  //@ts-ignore
-  const userId = req.userId
-  // validate the inputs from the user;
-  const body = req.body;
 
-  const parseData = createTaskInput.safeParse(body);
 
-  const user = await prismaClient.user.findFirst({
-      where: {
-          id: userId
-      }
-  })
-
-  if (!parseData.success) {
-      return res.status(411).json({
-          message: "You've sent the wrong inputs"
-      })
-  }
-
-  const transaction = await connection.getTransaction(parseData.data.signature, {
-      maxSupportedTransactionVersion: 1
-  });
-
-  console.log(transaction);
-
-  if ((transaction?.meta?.postBalances[1] ?? 0) - (transaction?.meta?.preBalances[1] ?? 0) !== 100000000) {
-      return res.status(411).json({
-          message: "Transaction signature/amount incorrect"
-      })
-  }
-
-  if (transaction?.transaction.message.getAccountKeys().get(1)?.toString() !== PARENT_WALLET_ADDRESS) {
-      return res.status(411).json({
-          message: "Transaction sent to wrong address"
-      })
-  }
-
-  if (transaction?.transaction.message.getAccountKeys().get(0)?.toString() !== user?.address) {
-      return res.status(411).json({
-          message: "Transaction sent to wrong address"
-      })
-  }
-  // was this money paid by this user address or a different address?
-
-  // parse the signature here to ensure the person has paid 0.1 SOL
-  // const transaction = Transaction.from(parseData.data.signature);
-
-  let response = await prismaClient.$transaction(async tx => {
-
-      const response = await tx.task.create({
-          data: {
-              title: parseData.data.title ?? DEFAULT_TITLE,
-              amount: 0.1 * TOTAL_DECIMALS,
-              //TODO: Signature should be unique in the table else people can reuse a signature
-              signature: parseData.data.signature,
-              user_id: userId
-          }
-      });
-
-      await tx.option.createMany({
-          data: parseData.data.options.map(x => ({
-              image_url: x.imageUrl,
-              task_id: response.id
-          }))
-      })
-
-      return response;
-
-  })
-
-  res.json({
-      id: response.id
-  })
-
-})
 
 //@ts-ignore
 router.get("/presignedUrl", authMiddleware, async (req, res) => {
@@ -166,5 +92,38 @@ router.post("/signin", async (req, res) => {
     res.status(500).json({ message: "Error during signin" });
   }
 });
+
+//@ts-ignore
+router.post("/task",authMiddleware, async(req,res)=>{
+  const body=req.body;
+
+  //@ts-ignore
+  const userId=req.userId
+  const parseData=createTaskInput.safeParse(body);
+
+  if(!parseData.success){
+    return res.status(411).json({
+      message:"Wrong Input"
+    })
+  }
+
+  prismaClient.$transaction(async tx=>{
+    const response = await tx.task.create({
+      data:{
+        title:parseData.data.title??"Paste Image Here",
+        amount:"1",
+        signature:parseData.data.signature,
+        user_id:userId
+      }
+    });
+
+    await tx.option.create({
+      data:parseData.data.options.map(x=>({
+        image_url:x.imageUlr,
+        task_id:response.id
+      }))
+    })
+  });
+})
 
 export default router;
