@@ -107,23 +107,29 @@ router.post("/task",authMiddleware, async(req,res)=>{
     })
   }
 
-  prismaClient.$transaction(async tx=>{
+  let response =await prismaClient.$transaction(async tx=>{
     const response = await tx.task.create({
       data:{
         title:parseData.data.title??"Paste Image Here",
-        amount:"1",
+        amount:1,
         signature:parseData.data.signature,
         user_id:userId
       }
     });
 
-    await tx.option.create({
+    await tx.option.createMany({
       data:parseData.data.options.map(x=>({
-        image_url:x.imageUlr,
+        image_url:x.imageUrl,
         task_id:response.id
       }))
-    })
+    });
+
+    return response;
   });
+
+  return res.json({
+    id:response.id
+  })
 })
 
 export default router;
