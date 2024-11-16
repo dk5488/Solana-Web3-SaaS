@@ -131,13 +131,13 @@ router.post("/task", authMiddleware, async (req, res) => {
 //@ts-ignore
 router.get("/task", authMiddleware, async (req, res) => {
   //@ts-ignore
-  const taskId: number = req.query.taskId;
+  const taskId: string = req.query.taskId;
   //@ts-ignore
-  const userId: number = req.query;
+  const userId: string = req.userId;
 
   const taskDetails = await prismaClient.task.findFirst({
     where: {
-      user_id: userId,
+      user_id: Number(userId),
       id: Number(taskId),
     },
     include: {
