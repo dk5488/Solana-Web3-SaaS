@@ -1,8 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
+import {
+  S3Client,
+  GetObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { authMiddleware } from "../middleware";
 import { createTaskInput } from "../types";
@@ -19,38 +23,30 @@ const s3Client = new S3Client({
   region: "eu-north-1",
 });
 
-
-
-
 //@ts-ignore
 router.get("/presignedUrl", authMiddleware, async (req, res) => {
-    //@ts-ignore
-  const userId=req.userId
-  
-
+  //@ts-ignore
+  const userId = req.userId;
 
   const { url, fields } = await createPresignedPost(s3Client, {
-    Bucket: 'decentralized-5r',
+    Bucket: "decentralized-5r",
     Key: `/fiver/${userId}/${Math.random()}/image.jpg`,
     Conditions: [
-      ['content-length-range', 0, 5 * 1024 * 1024] // 5 MB max
+      ["content-length-range", 0, 5 * 1024 * 1024], // 5 MB max
     ],
     Fields: {
-      success_action_status: '201',
-      'Content-Type': 'image/png'
+      success_action_status: "201",
+      "Content-Type": "image/png",
     },
-    Expires: 3600
-  })
-  
-  console.log({ url, fields })
+    Expires: 3600,
+  });
 
-  
+  console.log({ url, fields });
+
   res.json({
-    preSignedUrl:url,
-    fields
-  })
-
-
+    preSignedUrl: url,
+    fields,
+  });
 });
 
 router.post("/signin", async (req, res) => {
@@ -94,42 +90,103 @@ router.post("/signin", async (req, res) => {
 });
 
 //@ts-ignore
-router.post("/task",authMiddleware, async(req,res)=>{
-  const body=req.body;
+router.post("/task", authMiddleware, async (req, res) => {
+  const body = req.body;
 
   //@ts-ignore
-  const userId=req.userId
-  const parseData=createTaskInput.safeParse(body);
+  const userId = req.userId;
+  const parseData = createTaskInput.safeParse(body);
 
-  if(!parseData.success){
+  if (!parseData.success) {
     return res.status(411).json({
-      message:"Wrong Input"
-    })
+      message: "Wrong Input",
+    });
   }
 
-  let response =await prismaClient.$transaction(async tx=>{
+  let response = await prismaClient.$transaction(async (tx) => {
     const response = await tx.task.create({
-      data:{
-        title:parseData.data.title??"Paste Image Here",
-        amount:1,
-        signature:parseData.data.signature,
-        user_id:userId
-      }
+      data: {
+        title: parseData.data.title ?? "Paste Image Here",
+        amount: 1,
+        signature: parseData.data.signature,
+        user_id: userId,
+      },
     });
 
     await tx.option.createMany({
-      data:parseData.data.options.map(x=>({
-        image_url:x.imageUrl,
-        task_id:response.id
-      }))
+      data: parseData.data.options.map((x) => ({
+        image_url: x.imageUrl,
+        task_id: response.id,
+      })),
     });
 
     return response;
   });
 
   return res.json({
-    id:response.id
-  })
-})
+    id: response.id,
+  });
+});
+
+//@ts-ignore
+router.get("/task", authMiddleware, async (req, res) => {
+  //@ts-ignore
+  const taskId: number = req.query.taskId;
+  //@ts-ignore
+  const userId: number = req.query;
+
+  const taskDetails = await prismaClient.task.findFirst({
+    where: {
+      user_id: userId,
+      id: Number(taskId),
+    },
+    include: {
+      options: true,
+    },
+  });
+
+  if (!taskDetails) {
+    return res.status(411).json({
+      message: "You do not have access to this task",
+    });
+  }
+
+  const response = await prismaClient.submission.findMany({
+    where: {
+      task_id: Number(taskId),
+    },
+    include: {
+      option: true,
+    },
+  });
+
+  const result: Record<
+    string,
+    {
+      count: number;
+      option: {
+        imageUrl: string;
+      };
+    }
+  > = {};
+
+  taskDetails.options.forEach((option) => {
+    result[option.id] = {
+      count: 1,
+      option: {
+        imageUrl: option.image_url,
+      },
+    };
+  });
+
+  response.forEach((r) => {
+    result[r.option_id].count++;
+  });
+
+  res.json({
+    result,
+    taskDetails,
+  });
+});
 
 export default router;
