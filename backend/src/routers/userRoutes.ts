@@ -10,10 +10,11 @@ import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { authMiddleware } from "../middleware";
 import { createTaskInput } from "../types";
+import { JWT_SECRET } from "../config";
 
 const router = Router();
 const prismaClient = new PrismaClient();
-const JWT_SECRET = "Divy123";
+
 
 const s3Client = new S3Client({
   credentials: {

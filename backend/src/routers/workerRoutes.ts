@@ -3,12 +3,44 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { workerMiddleware } from "../middleware";
+import { authMiddleware, workerMiddleware } from "../middleware";
 
 const router = Router();
 const prismaClient = new PrismaClient();
-export const WORKER_JWT_SECRET = "Divy123";
+import { WORKER_JWT_SECRET } from "../config";
 
+//@ts-ignore
+router.get("/nextTask",workerMiddleware,async(req,res)=>{
+    //@ts-ignore
+    const userId=req.userId;
+
+
+    const task=await prismaClient.task.findFirst({
+        where:{
+            done:false,
+            submissions:{
+                none:{
+                    worker_id:userId,
+                    
+                }
+            }
+        },
+        select:{
+            options:true
+        }
+    })
+
+    if(!task){
+        return res.status(411).json({
+            message:"You dont have anymore tasks to review"
+        })
+    }
+    else{
+        return res.status(200).json({
+            task
+        })
+    }
+})
 router.post("/signin",async(req,res)=>{
     try {
         const walletAddress = "HijWBNXaHo76YvRwQLHwwQ4RwRLdbYagjwUQyE6Any7u";
@@ -23,7 +55,7 @@ router.post("/signin",async(req,res)=>{
             {
               userId: existingWorker.id,
             },
-            WORKER_JWT_SECRET 
+            WORKER_JWT_SECRET
           );
      
           res.json({ token });
