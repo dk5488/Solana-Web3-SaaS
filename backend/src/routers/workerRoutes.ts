@@ -10,43 +10,7 @@ const prismaClient = new PrismaClient();
 import { WORKER_JWT_SECRET } from "../config";
 
 //@ts-ignore
-router.get("/nextTask",workerMiddleware,async(req,res)=>{
-    //@ts-ignore
-    const userId=req.userId;
 
-    try {
-        const task=await prismaClient.task.findFirst({
-            where:{
-                done:false,
-                submissions:{
-                    none:{
-                        worker_id:userId,
-                        
-                    }
-                }
-            },
-            select:{
-                title:true,
-                options:true
-            }
-        })
-    
-        if(!task){
-            return res.status(411).json({
-                message:"You dont have anymore tasks to review"
-            })
-        }
-        else{
-            return res.status(200).json({
-                task
-            })
-        }
-    } catch (error) {
-        console.log("Error getting next task ",error)
-    }
-
-    
-})
 router.post("/signin",async(req,res)=>{
     try {
         const walletAddress = "HijWBNXaHo76YvRwQLHwwQ4RwRLdbYagjwUQyE6Any7u";
@@ -87,6 +51,45 @@ router.post("/signin",async(req,res)=>{
         console.error("Error during signin:", error);
         res.status(500).json({ message: "Error during signin" });
       }
+})
+
+//@ts-ignore
+router.get("/nextTask",workerMiddleware,async(req,res)=>{
+  //@ts-ignore
+  const userId=req.userId;
+
+  try {
+      const task=await prismaClient.task.findFirst({
+          where:{
+              done:false,
+              submissions:{
+                  none:{
+                      worker_id:userId,
+                      
+                  }
+              }
+          },
+          select:{
+              title:true,
+              options:true
+          }
+      })
+  
+      if(!task){
+          return res.status(411).json({
+              message:"You dont have anymore tasks to review"
+          })
+      }
+      else{
+          return res.status(200).json({
+              task
+          })
+      }
+  } catch (error) {
+      console.log("Error getting next task ",error)
+  }
+
+  
 })
 
 export default router;
