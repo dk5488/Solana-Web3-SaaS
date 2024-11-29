@@ -94,4 +94,21 @@ router.get("/nextTask",workerMiddleware,async(req,res)=>{
 })
 
 
+router.get("/balance", workerMiddleware, async (req, res) => {
+  // @ts-ignore
+  const userId: string = req.userId;
+
+  const worker = await prismaClient.worker.findFirst({
+      where: {
+          id: Number(userId)
+      }
+  })
+
+  res.json({
+      pendingAmount: worker?.pending_amount,
+      lockedAmount: worker?.pending_amount,
+  })
+})
+
+
 export default router;
