@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { authMiddleware, workerMiddleware } from "../middleware";
-
+import { getNextTask } from "../db";
 const router = Router();
 const prismaClient = new PrismaClient();
 import { WORKER_JWT_SECRET } from "../config";
@@ -54,43 +54,21 @@ router.post("/signin",async(req,res)=>{
 })
 
 //@ts-ignore
-router.get("/nextTask",workerMiddleware,async(req,res)=>{
-  //@ts-ignore
-  const userId=req.userId;
+router.get("/nextTask", workerMiddleware, async (req, res) => {
+  // @ts-ignore
+  const userId: string = req.userId;
 
-  try {
-      const task=await prismaClient.task.findFirst({
-          where:{
-              done:false,
-              submissions:{
-                  none:{
-                      worker_id:userId,
-                      
-                  }
-              }
-          },
+  const task = await getNextTask(Number(userId));
 
-          select:{
-              title:true,
-              options:true
-          }
+  if (!task) {
+      res.status(411).json({   
+          message: "No more tasks left for you to review"
       })
-  
-      if(!task){
-          return res.status(411).json({
-              message:"You dont have anymore tasks to review complete more tasks"
-          })
-      }
-      else{
-          return res.status(200).json({
-              task
-          })
-      }
-  } catch (error) {
-      console.log("Error getting next task ",error)
+  } else {
+      res.json({   
+          task
+      })
   }
-
-  
 })
 
 
