@@ -20,5 +20,5 @@ export const getNextTask = async (userId: number) => {
         }
     })
 
-    return task
+    return task;
 }
