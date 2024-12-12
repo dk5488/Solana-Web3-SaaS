@@ -71,6 +71,13 @@ router.get("/nextTask", workerMiddleware, async (req, res) => {
   }
 })
 
+//@ts-ignore
+router.post('/submission',workerMiddleware,async(req,res)=>{
+  
+})
+
+
+
 
 
 

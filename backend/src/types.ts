@@ -8,3 +8,10 @@ export const createTaskInput=z.object({
     title:z.string().optional(),
     signature:z.string()
 });
+
+
+
+export const createSubmissionInput=z.object({
+    taskId:z.string(),
+    selection:z.string()
+});
