@@ -8,9 +8,10 @@ import { getNextTask } from "../db";
 const router = Router();
 const prismaClient = new PrismaClient();
 import { WORKER_JWT_SECRET } from "../config";
+import { createSubmissionInput } from "../types";
+const TOTAL_SUBMISSIONS=100;
 
 //@ts-ignore
-
 router.post("/signin",async(req,res)=>{
     try {
         const walletAddress = "HijWBNXaHo76YvRwQLHwwQ4RwRLdbYagjwUQyE6Any7u";
@@ -73,7 +74,34 @@ router.get("/nextTask", workerMiddleware, async (req, res) => {
 
 //@ts-ignore
 router.post('/submission',workerMiddleware,async(req,res)=>{
-  
+  //@ts-ignore
+  const userId=req.userId;
+  const body=req.body;
+  const parsedBody=createSubmissionInput.safeParse(body);
+  const task=await getNextTask(Number(userId));
+
+  if(!task || task?.id!==Number(parsedBody.data?.taskId)){
+    return res.status(411).json({
+      message:"Incorrect taskId"
+    })
+  }
+
+  const amount =(Number(task.amount)/TOTAL_SUBMISSIONS)
+
+  const submission=await prismaClient.submission.create({
+    data:{
+      option_id:Number(parsedBody.data?.selection),
+      worker_id:userId,
+      task_id:Number(parsedBody.data?.taskId),
+      amount
+    }
+  })
+
+  const nextTask=getNextTask(Number(userId));
+  res.status(200).json({
+    nextTask,
+    amount
+  })
 })
 
 
